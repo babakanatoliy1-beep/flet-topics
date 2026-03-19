@@ -27,7 +27,6 @@ class ExtraButton(CalcButton):
         super().__init__(value, on_click, ft.Colors.BLUE_GREY_100, ft.Colors.BLACK)
 
 
-# 🔴 НОВИЙ КЛАС
 class BackspaceButton(CalcButton):
     def __init__(self, value, on_click):
         super().__init__(value, on_click, ft.Colors.RED_800, ft.Colors.WHITE)
@@ -45,24 +44,17 @@ class CalculatorApp(ft.Container):
         self.border_radius = 20
         self.padding = 20
 
-        self.expression = ft.Text(value="", color=ft.Colors.GREY, size=16)
+        self.history_list = ft.ListView(expand=True, spacing=4, width=220)
 
+        self.expression = ft.Text(value="", color=ft.Colors.GREY, size=16)
         self.result = ft.Text(value="0", color=ft.Colors.WHITE, size=40)
 
         self.content = ft.Column(
             controls=[
 
-                ft.Row(
-                    controls=[self.expression],
-                    alignment=ft.MainAxisAlignment.END
-                ),
+                ft.Row([self.expression], alignment=ft.MainAxisAlignment.END),
+                ft.Row([self.result], alignment=ft.MainAxisAlignment.END),
 
-                ft.Row(
-                    controls=[self.result],
-                    alignment=ft.MainAxisAlignment.END
-                ),
-
-                # 🔥 ПЕРШИЙ РЯД (додано ⌫)
                 ft.Row(
                     controls=[
                         ExtraButton("AC", self.button_clicked),
@@ -109,14 +101,32 @@ class CalculatorApp(ft.Container):
             ]
         )
 
+    def add_to_history(self, text):
+
+        def on_click(e):
+            value = text.split("= ")[-1]
+            self.result.value = value
+            self.new_operand = True
+            self.update()
+
+        self.history_list.controls.insert(
+            0,
+            ft.TextButton(
+                content=ft.Text(text),
+                on_click=on_click
+            )
+        )
+
+        if len(self.history_list.controls) > 10:
+            self.history_list.controls.pop()
+
+        self.history_list.update()
+
     def button_clicked(self, e):
 
         data = e.control.value
 
-        # 🔴 BACKSPACE
         if data == "⌫":
-
-            # не працює після "="
             if self.new_operand:
                 return
 
@@ -125,17 +135,14 @@ class CalculatorApp(ft.Container):
 
             elif len(self.result.value) > 1:
                 self.result.value = self.result.value[:-1]
-
             else:
                 self.result.value = "0"
 
-        # Очистити
         elif data == "AC":
             self.result.value = "0"
             self.expression.value = ""
             self.reset()
 
-        # Цифри
         elif data in "0123456789":
 
             if self.new_operand:
@@ -147,7 +154,6 @@ class CalculatorApp(ft.Container):
                 else:
                     self.result.value += data
 
-        # Крапка
         elif data == ".":
 
             if self.new_operand:
@@ -156,43 +162,38 @@ class CalculatorApp(ft.Container):
             if "." not in self.result.value:
                 self.result.value += "."
 
-        # Оператори
         elif data in "+-*/":
 
             operand2 = float(self.result.value)
-
             result = self.calculate(self.operand1, operand2, self.operator)
 
             self.expression.value += f"{self.format_number(operand2)} {data} "
-
             self.result.value = str(result)
 
             self.operand1 = float(result)
             self.operator = data
             self.new_operand = True
 
-        # Рівно
         elif data == "=":
 
             operand2 = float(self.result.value)
 
-            self.expression.value += f"{self.format_number(operand2)} ="
+            full_expr = f"{self.expression.value}{self.format_number(operand2)} ="
 
             result = self.calculate(self.operand1, operand2, self.operator)
 
             self.result.value = str(result)
+            self.expression.value = full_expr
+
+            self.add_to_history(f"{full_expr} {result}")
 
             self.reset()
 
-        # Плюс мінус
         elif data == "+/-":
-
             value = float(self.result.value) * -1
             self.result.value = str(self.format_number(value))
 
-        # Відсотки
         elif data == "%":
-
             value = float(self.result.value) / 100
             self.result.value = str(self.format_number(value))
 
@@ -229,11 +230,36 @@ def main(page: ft.Page):
 
     page.title = "Калькулятор"
     page.bgcolor = ft.Colors.BLACK
-    page.window_width = 400
-    page.window_height = 520
 
     calc = CalculatorApp()
-    page.add(calc)
+
+    history_panel = ft.Container(
+        width=220,
+        bgcolor=ft.Colors.BLACK,
+        padding=10,
+        content=ft.Column(
+            controls=[
+                ft.Text("Історія", color=ft.Colors.WHITE, size=20),
+                calc.history_list,
+                ft.TextButton(
+                    content=ft.Text("Очистити"),
+                    on_click=lambda e: (
+                        calc.history_list.controls.clear(),
+                        calc.history_list.update()
+                    )
+                )
+            ]
+        )
+    )
+
+    page.add(
+        ft.Row(
+            controls=[
+                calc,
+                history_panel
+            ]
+        )
+    )
 
 
 ft.run(main)

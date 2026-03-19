@@ -13,13 +13,13 @@ class CalcButton(ft.Button):
 
 
 class DigitButton(CalcButton):
-    def __init__(self, value, on_click):
-        super().__init__(value, on_click, ft.Colors.WHITE24)
+    def __init__(self, value, on_click, expand=1):
+        super().__init__(value, on_click, ft.Colors.WHITE24, ft.Colors.WHITE, expand)
 
 
 class ActionButton(CalcButton):
     def __init__(self, value, on_click):
-        super().__init__(value, on_click, ft.Colors.ORANGE)
+        super().__init__(value, on_click, ft.Colors.ORANGE, ft.Colors.WHITE)
 
 
 class ExtraButton(CalcButton):
@@ -27,102 +27,203 @@ class ExtraButton(CalcButton):
         super().__init__(value, on_click, ft.Colors.BLUE_GREY_100, ft.Colors.BLACK)
 
 
-def main(page: ft.Page):
-    page.title = "Calculator"
-    page.bgcolor = ft.Colors.BLACK
+class CalculatorApp(ft.Container):
 
-    expression = ""
+    def __init__(self):
+        super().__init__()
 
-    # рядок виразу
-    expression_text = ft.Text(
-        value="",
-        size=18,
-        color=ft.Colors.WHITE38
-    )
+        self.reset()
 
-    # результат
-    result = ft.Text(
-        value="0",
-        size=40,
-        color=ft.Colors.WHITE
-    )
+        self.width = 350
+        self.bgcolor = ft.Colors.BLACK
+        self.border_radius = 20
+        self.padding = 20
 
-    def button_click(e):
-        nonlocal expression
-        value = e.control.value
-
-        if value == "AC":
-            expression = ""
-            result.value = "0"
-            expression_text.value = ""
-
-        elif value == "=":
-            try:
-                expression_text.value = expression + " ="
-                expression = str(eval(expression))
-                result.value = expression
-            except:
-                result.value = "Error"
-                expression = ""
-                expression_text.value = ""
-
-        else:
-            expression += value
-            result.value = expression
-            expression_text.value = expression
-
-        page.update()
-
-    page.add(
-        ft.Container(
-            width=350,
-            bgcolor=ft.Colors.BLACK,
-            border_radius=20,
-            padding=20,
-            content=ft.Column(
-                controls=[
-
-                    ft.Row([expression_text], alignment=ft.MainAxisAlignment.END),
-
-                    ft.Row([result], alignment=ft.MainAxisAlignment.END),
-
-                    ft.Row([
-                        ExtraButton("AC", button_click),
-                        ExtraButton("%", button_click),
-                        ExtraButton(".", button_click),
-                        ActionButton("/", button_click),
-                    ]),
-
-                    ft.Row([
-                        DigitButton("7", button_click),
-                        DigitButton("8", button_click),
-                        DigitButton("9", button_click),
-                        ActionButton("*", button_click),
-                    ]),
-
-                    ft.Row([
-                        DigitButton("4", button_click),
-                        DigitButton("5", button_click),
-                        DigitButton("6", button_click),
-                        ActionButton("-", button_click),
-                    ]),
-
-                    ft.Row([
-                        DigitButton("1", button_click),
-                        DigitButton("2", button_click),
-                        DigitButton("3", button_click),
-                        ActionButton("+", button_click),
-                    ]),
-
-                    ft.Row([
-                        DigitButton("0", button_click),
-                        ActionButton("=", button_click),
-                    ]),
-                ]
-            ),
+        self.expression = ft.Text(
+            value="",
+            color=ft.Colors.GREY,
+            size=16
         )
-    )
+
+        self.result = ft.Text(
+            value="0",
+            color=ft.Colors.WHITE,
+            size=40
+        )
+
+        self.content = ft.Column(
+            controls=[
+
+                ft.Row(
+                    controls=[self.expression],
+                    alignment=ft.MainAxisAlignment.END
+                ),
+
+                ft.Row(
+                    controls=[self.result],
+                    alignment=ft.MainAxisAlignment.END
+                ),
+
+                ft.Row(
+                    controls=[
+                        ExtraButton("AC", self.button_clicked),
+                        ExtraButton("+/-", self.button_clicked),
+                        ExtraButton("%", self.button_clicked),
+                        ActionButton("/", self.button_clicked),
+                    ]
+                ),
+
+                ft.Row(
+                    controls=[
+                        DigitButton("7", self.button_clicked),
+                        DigitButton("8", self.button_clicked),
+                        DigitButton("9", self.button_clicked),
+                        ActionButton("*", self.button_clicked),
+                    ]
+                ),
+
+                ft.Row(
+                    controls=[
+                        DigitButton("4", self.button_clicked),
+                        DigitButton("5", self.button_clicked),
+                        DigitButton("6", self.button_clicked),
+                        ActionButton("-", self.button_clicked),
+                    ]
+                ),
+
+                ft.Row(
+                    controls=[
+                        DigitButton("1", self.button_clicked),
+                        DigitButton("2", self.button_clicked),
+                        DigitButton("3", self.button_clicked),
+                        ActionButton("+", self.button_clicked),
+                    ]
+                ),
+
+                ft.Row(
+                    controls=[
+                        DigitButton("0", self.button_clicked, expand=2),
+                        DigitButton(".", self.button_clicked),
+                        ActionButton("=", self.button_clicked),
+                    ]
+                ),
+            ]
+        )
+
+    def button_clicked(self, e):
+
+        data = e.control.value
+
+        # Очистити
+        if data == "AC":
+            self.result.value = "0"
+            self.expression.value = ""
+            self.reset()
+
+        # Цифри
+        elif data in "0123456789":
+
+            if self.new_operand:
+                self.result.value = data
+                self.new_operand = False
+            else:
+                if self.result.value == "0":
+                    self.result.value = data
+                else:
+                    self.result.value += data
+
+        # Крапка
+        elif data == ".":
+
+            if self.new_operand:
+                return
+
+            if "." not in self.result.value:
+                self.result.value += "."
+
+        # Оператори
+        elif data in "+-*/":
+
+            operand2 = float(self.result.value)
+
+            result = self.calculate(self.operand1, operand2, self.operator)
+
+            self.expression.value += f"{self.format_number(operand2)} {data} "
+
+            self.result.value = str(result)
+
+            self.operand1 = float(result)
+            self.operator = data
+            self.new_operand = True
+
+        # Рівно
+        elif data == "=":
+
+            operand2 = float(self.result.value)
+
+            self.expression.value += f"{self.format_number(operand2)} ="
+
+            result = self.calculate(self.operand1, operand2, self.operator)
+
+            self.result.value = str(result)
+
+            self.reset()
+
+        # Плюс мінус
+        elif data == "+/-":
+
+            value = float(self.result.value) * -1
+            self.result.value = str(self.format_number(value))
+
+        # Відсотки
+        elif data == "%":
+
+            value = float(self.result.value) / 100
+            self.result.value = str(self.format_number(value))
+
+        self.update()
+
+    def reset(self):
+        self.operator = "+"
+        self.operand1 = 0
+        self.new_operand = True
+
+    def format_number(self, number):
+
+        if number % 1 == 0:
+            return int(number)
+
+        return number
+
+    def calculate(self, a, b, op):
+
+        if op == "+":
+            return self.format_number(a + b)
+
+        if op == "-":
+            return self.format_number(a - b)
+
+        if op == "*":
+            return self.format_number(a * b)
+
+        if op == "/":
+
+            if b == 0:
+                return "Error"
+
+            return self.format_number(a / b)
 
 
-if __name__ == "__main__":
-    ft.run(main)
+def main(page: ft.Page):
+
+    page.title = "Калькулятор"
+    page.bgcolor = ft.Colors.BLACK
+    page.window_width = 400
+    page.window_height = 520
+
+    calc = CalculatorApp()
+
+    page.add(calc)
+
+
+ft.run(main)
